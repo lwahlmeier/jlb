@@ -1,7 +1,6 @@
 package me.lcw.jlb;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -34,17 +33,17 @@ public class TCPEntPointTests {
     ThreadedSocketExecuter TSE = new ThreadedSocketExecuter(PS);
     TSE.start();
     int lbPort = PortUtils.findTCPPort();
-    final TCPLoadBalancer rlb = new TCPLoadBalancer("1", TSE, new InetSocketAddress("localhost", lbPort));
+    final TCPLoadBalancer rlb = new TCPLoadBalancer("1", TSE, new IPPort("127.0.0.1", lbPort));
     rlb.setConfig(new EndpointConfig(100, 1000, 1, 1));
     
     
     final EchoServer[] servers = new EchoServer[server_size];
-    InetSocketAddress[] server_isa = new InetSocketAddress[server_size];
+    IPPort[] server_isa = new IPPort[server_size];
     
     for(int i=0; i<server_size; i++) {
       int port = PortUtils.findTCPPort();
-      servers[i] = new EchoServer(TSE.createTCPServer("localhost", port), port);
-      server_isa[i] = new InetSocketAddress("localhost", port);
+      servers[i] = new EchoServer(TSE.createTCPServer("127.0.0.1", port), port);
+      server_isa[i] = new IPPort("127.0.0.1", port);
       rlb.addEndpoint(server_isa[i]);
     }
     rlb.start();
@@ -58,7 +57,7 @@ public class TCPEntPointTests {
 
     final ArrayList<TCPClient> clients = new ArrayList<TCPClient>(); 
     for(int i=0; i<client_size; i++) {
-      TCPClient c = TSE.createTCPClient("localhost", lbPort);
+      TCPClient c = TSE.createTCPClient("127.0.0.1", lbPort);
       c.connect().get();
       clients.add(c);
       c.write(ByteBuffer.wrap("TEST".getBytes()));
@@ -103,17 +102,17 @@ public class TCPEntPointTests {
     ThreadedSocketExecuter TSE = new ThreadedSocketExecuter(PS);
     TSE.start();
     int lbPort = PortUtils.findTCPPort();
-    final TCPLoadBalancer rlb = new TCPLoadBalancer("1", TSE, new InetSocketAddress("localhost", lbPort));
+    final TCPLoadBalancer rlb = new TCPLoadBalancer("1", TSE, new IPPort("127.0.0.1", lbPort));
     rlb.setConfig(new EndpointConfig(100, 1000, 1, 1));
     
     
     final EchoServer[] servers = new EchoServer[server_size];
-    InetSocketAddress[] server_isa = new InetSocketAddress[server_size];
+    IPPort[] server_isa = new IPPort[server_size];
     
     for(int i=0; i<server_size; i++) {
       int port = PortUtils.findTCPPort();
-      servers[i] = new EchoServer(TSE.createTCPServer("localhost", port), port);
-      server_isa[i] = new InetSocketAddress("localhost", port);
+      servers[i] = new EchoServer(TSE.createTCPServer("127.0.0.1", port), port);
+      server_isa[i] = new IPPort("127.0.0.1", port);
       rlb.addEndpoint(server_isa[i]);
     }
     rlb.start();
@@ -127,7 +126,7 @@ public class TCPEntPointTests {
 
     final ArrayList<TCPClient> clients = new ArrayList<TCPClient>(); 
     for(int i=0; i<client_size; i++) {
-      TCPClient c = TSE.createTCPClient("localhost", lbPort);
+      TCPClient c = TSE.createTCPClient("127.0.0.1", lbPort);
       c.connect().get();
       clients.add(c);
       c.write(ByteBuffer.wrap("TEST".getBytes()));
@@ -179,17 +178,17 @@ public class TCPEntPointTests {
     ThreadedSocketExecuter TSE = new ThreadedSocketExecuter(PS);
     TSE.start();
     int lbPort = PortUtils.findTCPPort();
-    final TCPLoadBalancer rlb = new TCPLoadBalancer("1", TSE, new InetSocketAddress("localhost", lbPort));
+    final TCPLoadBalancer rlb = new TCPLoadBalancer("1", TSE, new IPPort("127.0.0.1", lbPort));
     rlb.setConfig(new EndpointConfig(100, 1000, 1, 1));
     
     
     final EchoServer[] servers = new EchoServer[server_size];
-    InetSocketAddress[] server_isa = new InetSocketAddress[server_size];
+    IPPort[] server_isa = new IPPort[server_size];
     
     for(int i=0; i<server_size; i++) {
       int port = PortUtils.findTCPPort();
-      servers[i] = new EchoServer(TSE.createTCPServer("localhost", port), port);
-      server_isa[i] = new InetSocketAddress("localhost", port);
+      servers[i] = new EchoServer(TSE.createTCPServer("127.0.0.1", port), port);
+      server_isa[i] = new IPPort("127.0.0.1", port);
       rlb.addEndpoint(server_isa[i]);
       servers[i].doRead = false;
     }
@@ -204,7 +203,7 @@ public class TCPEntPointTests {
 
     final ArrayList<TCPClient> clients = new ArrayList<TCPClient>(); 
     for(int i=0; i<client_size; i++) {
-      TCPClient c = TSE.createTCPClient("localhost", lbPort);
+      TCPClient c = TSE.createTCPClient("127.0.0.1", lbPort);
       c.setReader(new Reader() {
 
         @Override

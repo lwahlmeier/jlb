@@ -1,7 +1,6 @@
 package me.lcw.jlb;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -29,21 +28,21 @@ public class TCPEndPoint {
   private final ConcurrentLinkedQueue<Boolean> passFails = new ConcurrentLinkedQueue<Boolean>();
   private final ConnectionCheckRunnable ccr = new ConnectionCheckRunnable();
   private final SocketExecuter se;
-  private final InetSocketAddress endpointISA;
+  private final IPPort endpointISA;
   private final String id;
 
   private volatile EndpointConfig epc;
   private volatile boolean enabled = false;
   private volatile long lastAdd = Clock.lastKnownForwardProgressingMillis();
   
-  public TCPEndPoint(String id, SocketExecuter se, InetSocketAddress endpoint, EndpointConfig epc) {
+  public TCPEndPoint(String id, SocketExecuter se, IPPort endpoint, EndpointConfig epc) {
     this.id = id;
     this.se = se;
     this.endpointISA = endpoint;
     this.epc = epc;
   }
   
-  public InetSocketAddress getAddress() {
+  public IPPort getIPPort() {
     return this.endpointISA;
   }
   
@@ -57,7 +56,7 @@ public class TCPEndPoint {
   
   public void addClient(final TCPClient inClient) throws IOException {
     if(!clients.containsKey(inClient)) {
-      final TCPClient outClient = se.createTCPClient(endpointISA.getHostString(), endpointISA.getPort());
+      final TCPClient outClient = se.createTCPClient(endpointISA.getIPAsString(), endpointISA.getPort());
       outClient.clientOptions().setNativeBuffers(true);
       outClient.clientOptions().setReducedReadAllocations(true);
       if(clients.putIfAbsent(inClient, outClient) == null) {
@@ -126,7 +125,7 @@ public class TCPEndPoint {
           while(passFails.size() > (epc.failsTillUnhealthy + epc.minPassTillHealthy)) {
             passFails.poll();
           }
-          final TCPClient c = se.createTCPClient(endpointISA.getHostString(), endpointISA.getPort());
+          final TCPClient c = se.createTCPClient(endpointISA.getIPAsString(), endpointISA.getPort());
           c.setConnectionTimeout(epc.connectTimeout);
           c.connect().addCallback(new FutureCallback<Boolean>() {
 

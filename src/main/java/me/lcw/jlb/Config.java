@@ -1,6 +1,5 @@
 package me.lcw.jlb;
 
-import java.net.InetSocketAddress;
 import java.util.Set;
 
 public class Config {
@@ -30,29 +29,29 @@ public class Config {
   public static class HostPort {
     public final String host;
     public final int port;
-    private transient volatile InetSocketAddress address = null; 
+    private transient volatile IPPort address = null; 
     
     public HostPort(String host, int port) {
       this.host =host;
       this.port = port;
-      getAddress();
+      getIPPort();
     }
     
-    public InetSocketAddress getAddress() {
+    public IPPort getIPPort() {
       if(address == null) {
-        address = new InetSocketAddress(host, port);
+        address = new IPPort(host, port);
       }
       return address;
     }
     
     @Override
     public int hashCode() {
-      return this.getAddress().hashCode();
+      return this.getIPPort().hashCode();
     }
     
     @Override
     public boolean equals(Object o) {
-      return this.getAddress().equals(o);
+      return this.getIPPort().equals(o);
     }
   }
 }

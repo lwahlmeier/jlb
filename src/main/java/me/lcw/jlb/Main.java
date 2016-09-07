@@ -78,16 +78,16 @@ public class Main {
           if(lbs.containsKey(lbc.name)) {
             tcpLB = lbs.get(lbc.name);
           } else {
-            tcpLB = new TCPLoadBalancer(lbc.name, TSE, lbc.localAddress.getAddress());
+            tcpLB = new TCPLoadBalancer(lbc.name, TSE, lbc.localAddress.getIPPort());
             tcpLB.start();
             lbs.put(lbc.name, tcpLB);
           }
           HashSet<TCPEndPoint> origHosts = new HashSet<TCPEndPoint>(tcpLB.getAllEndpoints());
           for(HostPort hp: lbc.remoteHosts) {
-            tcpLB.addEndpoint(hp.getAddress());
+            tcpLB.addEndpoint(hp.getIPPort());
             TCPEndPoint toRemove = null;
             for(TCPEndPoint tep: origHosts) {
-              if(tep.getAddress().equals(hp.getAddress())) {
+              if(tep.getIPPort().equals(hp.getIPPort())) {
                 toRemove = tep;
                 break;
               }
@@ -100,7 +100,7 @@ public class Main {
           for(TCPEndPoint tep: origHosts) {
             tep.disable();
             if(tep.clientSize() == 0) {
-              tcpLB.removeEndpoint(tep.getAddress());
+              tcpLB.removeEndpoint(tep.getIPPort());
             }
           }
         }

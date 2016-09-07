@@ -1,7 +1,6 @@
 package me.lcw.jlb;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
@@ -20,21 +19,21 @@ import me.lcw.jlb.Config.EndpointConfig;
 public class TCPLoadBalancer {
   private static final Logger log = LoggerFactory.getLogger(TCPLoadBalancer.class);
   
-  private final ConcurrentHashMap<InetSocketAddress, TCPEndPoint> endpoints = new ConcurrentHashMap<InetSocketAddress, TCPEndPoint>();
+  private final ConcurrentHashMap<IPPort, TCPEndPoint> endpoints = new ConcurrentHashMap<IPPort, TCPEndPoint>();
   private final ServerClientAcceptor sca = new ServerClientAcceptor();
   private final SocketExecuter se;
   private final TCPServer server;
-  private final InetSocketAddress localAddress;
+  private final IPPort localIPP;
   private final String id;
   
   private volatile EndpointConfig epc = new EndpointConfig(2000, 5000, 3, 1);
   
   
-  public TCPLoadBalancer(String id, SocketExecuter se, InetSocketAddress fromISA) throws IOException {
+  public TCPLoadBalancer(String id, SocketExecuter se, IPPort fromIPP) throws IOException {
     this.id = id;
     this.se = se;
-    this.localAddress = fromISA;
-    server = this.se.createTCPServer(localAddress.getHostString(), fromISA.getPort());
+    this.localIPP = fromIPP;
+    server = this.se.createTCPServer(localIPP.getIPAsString(), localIPP.getPort());
     server.setClientAcceptor(sca);
   }
   
@@ -64,17 +63,17 @@ public class TCPLoadBalancer {
     return false;
   }
   
-  public void addEndpoint(InetSocketAddress isa) {
-    TCPEndPoint tep = new TCPEndPoint(id, se, isa, epc);
-    if(endpoints.putIfAbsent(isa, tep) == null) {
+  public void addEndpoint(IPPort ipp) {
+    TCPEndPoint tep = new TCPEndPoint(id, se, ipp, epc);
+    if(endpoints.putIfAbsent(ipp, tep) == null) {
       tep.enable();
       log.info("new Endpoint added:{}",tep);      
     }
   }
   
-  public void removeEndpoint(InetSocketAddress isa) {
-    TCPEndPoint tep = new TCPEndPoint(id, se, isa, epc);
-    if(endpoints.putIfAbsent(isa, tep) == null) {
+  public void removeEndpoint(IPPort ipp) {
+    TCPEndPoint tep = new TCPEndPoint(id, se, ipp, epc);
+    if(endpoints.putIfAbsent(ipp, tep) == null) {
       tep.enable();
       log.info("Endpoint removed:{}",tep);      
     }
@@ -109,7 +108,7 @@ public class TCPLoadBalancer {
   
   @Override
   public String toString() {
-    return "LB:"+id+":"+this.localAddress;
+    return "LB:"+id+":"+this.localIPP;
   }
   
   
