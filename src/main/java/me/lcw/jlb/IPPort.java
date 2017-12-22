@@ -67,10 +67,18 @@ public class IPPort {
     }
     byte[] parts = new byte[4];
     try {
-      parts[0] = Byte.parseByte(ips[0]);
-      parts[1] = Byte.parseByte(ips[1]);
-      parts[2] = Byte.parseByte(ips[2]);
-      parts[3] = Byte.parseByte(ips[3]);
+      int a = Integer.parseInt(ips[0]);
+      int b = Integer.parseInt(ips[1]);
+      int c = Integer.parseInt(ips[2]);
+      int d = Integer.parseInt(ips[3]);
+      if(a>255 || b>255 || c>255 || d>255 ) {
+        throw new IllegalArgumentException("Not a valid IPv4 address:"+ip);
+      }
+      parts[0] = (byte)a;
+      parts[1] = (byte)b;
+      parts[2] = (byte)c;
+      parts[3] = (byte)d;
+
       return parts[0]<<24 | parts[1]<<16 | parts[2]<<8 | parts[3];
     } catch (Exception e) {
       throw new IllegalArgumentException("Not a valid IPv4 address:"+ip, e);

@@ -10,17 +10,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
 import org.threadly.concurrent.PriorityScheduler;
 import org.threadly.litesockets.Client;
-import org.threadly.litesockets.Client.CloseListener;
+import org.threadly.litesockets.Client.ClientCloseListener;
 import org.threadly.litesockets.Client.Reader;
 import org.threadly.litesockets.Server.ClientAcceptor;
 import org.threadly.litesockets.TCPClient;
 import org.threadly.litesockets.TCPServer;
 import org.threadly.litesockets.ThreadedSocketExecuter;
-import org.threadly.litesockets.utils.MergedByteBuffers;
+import org.threadly.litesockets.buffers.MergedByteBuffers;
 import org.threadly.litesockets.utils.PortUtils;
 import org.threadly.test.concurrent.TestCondition;
 
 import me.lcw.jlb.Config.EndpointConfig;
+import me.lcw.jlb.Config.RemoteHostPort;
 
 public class TCPEntPointTests {
   
@@ -38,13 +39,13 @@ public class TCPEntPointTests {
     
     
     final EchoServer[] servers = new EchoServer[server_size];
-    IPPort[] server_isa = new IPPort[server_size];
+    RemoteHostPort[] server_isa = new RemoteHostPort[server_size];
     
     for(int i=0; i<server_size; i++) {
       int port = PortUtils.findTCPPort();
       servers[i] = new EchoServer(TSE.createTCPServer("127.0.0.1", port), port);
-      server_isa[i] = new IPPort("127.0.0.1", port);
-      rlb.addEndpoint(server_isa[i]);
+      server_isa[i] = new RemoteHostPort("127.0.0.1", port, true);
+      rlb.addRemoteHost(server_isa[i]);
     }
     rlb.start();
     
@@ -82,7 +83,7 @@ public class TCPEntPointTests {
     new TestCondition() {
       @Override
       public boolean get() {
-        for(TCPEndPoint ep: rlb.getAllEndpoints()) {
+        for(TCPEndPoint ep: rlb.getEndPoints()) {
           if(!ep.isHealthy()) {
             return true;
           }
@@ -107,13 +108,13 @@ public class TCPEntPointTests {
     
     
     final EchoServer[] servers = new EchoServer[server_size];
-    IPPort[] server_isa = new IPPort[server_size];
+    RemoteHostPort[] server_isa = new RemoteHostPort[server_size];
     
     for(int i=0; i<server_size; i++) {
       int port = PortUtils.findTCPPort();
       servers[i] = new EchoServer(TSE.createTCPServer("127.0.0.1", port), port);
-      server_isa[i] = new IPPort("127.0.0.1", port);
-      rlb.addEndpoint(server_isa[i]);
+      server_isa[i] = new RemoteHostPort("127.0.0.1", port, true);
+      rlb.addRemoteHost(server_isa[i]);
     }
     rlb.start();
     
@@ -183,13 +184,13 @@ public class TCPEntPointTests {
     
     
     final EchoServer[] servers = new EchoServer[server_size];
-    IPPort[] server_isa = new IPPort[server_size];
+    RemoteHostPort[] server_isa = new RemoteHostPort[server_size];
     
     for(int i=0; i<server_size; i++) {
       int port = PortUtils.findTCPPort();
       servers[i] = new EchoServer(TSE.createTCPServer("127.0.0.1", port), port);
-      server_isa[i] = new IPPort("127.0.0.1", port);
-      rlb.addEndpoint(server_isa[i]);
+      server_isa[i] = new RemoteHostPort("127.0.0.1", port, true);
+      rlb.addRemoteHost(server_isa[i]);
       servers[i].doRead = false;
     }
     rlb.start();
@@ -248,7 +249,7 @@ public class TCPEntPointTests {
     }.blockTillTrue(5000);
   }
   
-  public class EchoServer implements ClientAcceptor, Reader, CloseListener {
+  public class EchoServer implements ClientAcceptor, Reader, ClientCloseListener {
     AtomicInteger clients = new AtomicInteger(0);
     AtomicInteger data = new AtomicInteger(0);
     CopyOnWriteArraySet<TCPClient> tcp_clients = new CopyOnWriteArraySet<TCPClient>(); 
@@ -276,7 +277,7 @@ public class TCPEntPointTests {
         data.addAndGet(mbb.remaining());
         if(doEcho) {
           try {
-            client.write(mbb.pull(mbb.remaining()));
+            client.write(mbb);
           } catch(Exception e) {
             
           }

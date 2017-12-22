@@ -8,14 +8,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.threadly.concurrent.future.FutureCallback;
-import org.threadly.concurrent.future.FutureUtils;
-import org.threadly.concurrent.future.ListenableFuture;
 import org.threadly.litesockets.Client;
-import org.threadly.litesockets.Client.CloseListener;
+import org.threadly.litesockets.Client.ClientCloseListener;
 import org.threadly.litesockets.Client.Reader;
 import org.threadly.litesockets.SocketExecuter;
 import org.threadly.litesockets.TCPClient;
-import org.threadly.litesockets.utils.MergedByteBuffers;
 import org.threadly.util.Clock;
 
 import me.lcw.jlb.Config.EndpointConfig;
@@ -162,7 +159,7 @@ public class TCPEndPoint {
     return "TCPEndPoint:"+id+":"+this.endpointISA;
   }
   
-  private class ClientProxyCloser implements CloseListener {
+  private class ClientProxyCloser implements ClientCloseListener {
     private final TCPClient sourceClient;
     
     private ClientProxyCloser(TCPClient sourceClient) {
@@ -182,8 +179,6 @@ public class TCPEndPoint {
   
   private static class ClientProxyReader implements Reader {
     private final TCPClient toClient;
-    private final MergedByteBuffers mbb = new MergedByteBuffers();
-    private volatile ListenableFuture<?> lastFuture = FutureUtils.immediateResultFuture(true);
     
     ClientProxyReader(TCPClient toClient) {
       this.toClient = toClient;
@@ -192,10 +187,9 @@ public class TCPEndPoint {
     @Override
     public void onRead(final Client lfromClient) {
       if(toClient.getWriteBufferSize() < MAX_WRITEBUFFER_SIZE) {
-        mbb.add(lfromClient.getRead());
-        lastFuture =  toClient.write(mbb.pull(mbb.remaining()));
+        toClient.write(lfromClient.getRead());
       } else {
-        lastFuture.addListener(new Runnable() {
+        toClient.lastWriteFuture().addListener(new Runnable() {
           @Override
           public void run() {
             onRead(lfromClient);

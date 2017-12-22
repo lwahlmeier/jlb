@@ -1,26 +1,28 @@
 package me.lcw.jlb;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.threadly.litesockets.Client;
-import org.threadly.litesockets.Server.ClientAcceptor;
 import org.threadly.litesockets.SocketExecuter;
 import org.threadly.litesockets.TCPClient;
 import org.threadly.litesockets.TCPServer;
 
 import me.lcw.jlb.Config.EndpointConfig;
+import me.lcw.jlb.Config.RemoteHostPort;
 
 public class TCPLoadBalancer {
   private static final Logger log = LoggerFactory.getLogger(TCPLoadBalancer.class);
   
   private final ConcurrentHashMap<IPPort, TCPEndPoint> endpoints = new ConcurrentHashMap<IPPort, TCPEndPoint>();
-  private final ServerClientAcceptor sca = new ServerClientAcceptor();
   private final SocketExecuter se;
   private final TCPServer server;
   private final IPPort localIPP;
@@ -34,7 +36,7 @@ public class TCPLoadBalancer {
     this.se = se;
     this.localIPP = fromIPP;
     server = this.se.createTCPServer(localIPP.getIPAsString(), localIPP.getPort());
-    server.setClientAcceptor(sca);
+    server.setClientAcceptor((client)->onClientAccept(client));
   }
   
   public void start() {
@@ -49,7 +51,7 @@ public class TCPLoadBalancer {
   
   public void setConfig(EndpointConfig epc) {
     this.epc = epc;
-    for(TCPEndPoint ep: getEndpointOrderedList()) {
+    for(TCPEndPoint ep: endpoints.values()) {
       ep.setConfig(epc);
     }
   }
@@ -63,47 +65,68 @@ public class TCPLoadBalancer {
     return false;
   }
   
-  public void addEndpoint(IPPort ipp) {
-    TCPEndPoint tep = new TCPEndPoint(id, se, ipp, epc);
-    if(endpoints.putIfAbsent(ipp, tep) == null) {
+  public void addRemoteHost(RemoteHostPort ipp) {
+    TCPEndPoint tep = new TCPEndPoint(id, se, ipp.getIPPort(), epc);
+    TCPEndPoint ntep  = endpoints.putIfAbsent(ipp.getIPPort(), tep);
+    if(ntep == null) {
+      log.info("{}: new Endpoint added:{}",id, tep);
+      ntep = tep;
+    }
+    if(ipp.enabled) {
       tep.enable();
-      log.info("new Endpoint added:{}",tep);      
+    } else {
+      tep.disable();
     }
   }
   
-  public void removeEndpoint(IPPort ipp) {
-    TCPEndPoint tep = new TCPEndPoint(id, se, ipp, epc);
-    if(endpoints.putIfAbsent(ipp, tep) == null) {
-      tep.enable();
+  public void removeRemoteHost(RemoteHostPort ipp) {
+    TCPEndPoint tep = endpoints.remove(ipp.getIPPort());
+    if(tep != null) {
+      tep.disable();
       log.info("Endpoint removed:{}",tep);      
     }
   }
-    
-  public List<TCPEndPoint> getEndpointOrderedList() {
-    LinkedList<TCPEndPoint> ltep = new LinkedList<TCPEndPoint>();
+     
+  public Set<RemoteHostPort> getRemoteHostPorts() {
+    HashSet<RemoteHostPort> ltep = new HashSet<RemoteHostPort>();
     for(TCPEndPoint tep: endpoints.values()) {
-      if(tep.isEnabled() && tep.isHealthy()) {
-        if(ltep.size() == 0) {
-          ltep.add(tep);
-        } else {
-          int pos = 0;
-          for(TCPEndPoint subtep: ltep) {
-            if(subtep.clientSize() < tep.clientSize()) {
-              pos++;
-            } else if(subtep.clientSize() == tep.clientSize() && subtep.getLastTime() < tep.getLastTime()) {
-              pos++;
-            }
-          }
-          ltep.add(pos, tep);
-        }
-
-      }
+      ltep.add(new RemoteHostPort(tep.getIPPort(), tep.isEnabled()));
     }
     return ltep;
   }
   
-  public Collection<TCPEndPoint> getAllEndpoints() {
-    return this.endpoints.values();
+  protected Collection<TCPEndPoint> getEndPoints() {
+    return endpoints.values();
+  }
+    
+  protected TCPEndPoint getNextEndpoint() {
+    int lastSize = 0;
+    TCPEndPoint nextEP = null;
+    List<TCPEndPoint> eps = new ArrayList<>(endpoints.values());
+    Collections.shuffle(eps);
+    for(TCPEndPoint tep: eps) {
+      if(tep.isEnabled() && tep.isHealthy() && (lastSize == 0 || tep.clientSize() < lastSize)) {
+        nextEP = tep;
+      }
+    }
+    return nextEP;
+  }
+
+  private void onClientAccept(final Client client) {
+    final TCPEndPoint tep = getNextEndpoint();
+    final TCPClient tclient = (TCPClient)client;
+    if(tep == null) {
+      client.close();
+      log.error("{}: could not add client to any endpoints!", id);
+      return;
+    }
+    try {
+      tep.addClient(tclient);
+      return;
+    } catch (IOException e) {
+      client.close();
+      log.error("{}: Problem adding client to {} error:{}", id, tep.toString(), e.getMessage());
+    }
   }
   
   @Override
@@ -112,29 +135,4 @@ public class TCPLoadBalancer {
   }
   
   
-  private class ServerClientAcceptor implements ClientAcceptor {
-
-    @Override
-    public void accept(Client client) {
-      final List<TCPEndPoint> ltep = getEndpointOrderedList();
-      final TCPClient tclient = (TCPClient)client;
-      tclient.clientOptions().setNativeBuffers(true);
-      tclient.clientOptions().setReducedReadAllocations(true);
-      if(ltep.size() == 0) {
-        client.close();
-      } else {
-        for(TCPEndPoint tep: ltep) {
-          try {
-            tep.addClient(tclient);
-            return;
-          } catch (IOException e) {
-            log.error("Problem adding client to {} error:{}", tep.toString(), e.getMessage());
-          }
-        }
-        log.error("could not add client to any endpoint!");
-        client.close();
-      }
-    }
-    
-  }
 }
